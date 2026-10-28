@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lantern Catch</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #14213d; color: #fdf0d5;
+    font-family: Georgia, "Times New Roman", serif; display: flex;
+    flex-direction: column; align-items: center; justify-content: center; }
+  h1 { margin: 0 0 8px; font-weight: normal; letter-spacing: .02em; }
+  canvas { background: #1d2f55; border: 2px solid #fca311; max-width: 96vw; }
+  p { margin: 8px 0 0; opacity: .8; }
+</style>
+</head>
+<body>
+<h1>Lantern Catch</h1>
+<canvas id="game" width="480" height="640"></canvas>
+<p>Move with ← → or A / D. Catch lanterns, dodge the rocks. Space restarts.</p>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player, items, score, lives, spawnTimer, keys = {}, gameOver;
+
+function reset() {
+  player = { x: 210, y: 590, w: 60, h: 16, speed: 6 };
+  items = [];
+  score = 0;
+  lives = 3;
+  spawnTimer = 0;
+  gameOver = false;
+}
+
+function spawn() {
+  const isRock = Math.random() < 0.3;
+  items.push({
+    x: Math.random() * (canvas.width - 24) + 12,
+    y: -20,
+    r: 12,
+    rock: isRock,
+    vy: 2 + Math.random() * 2 + score / 150
+  });
+}
+
+function update() {
+  if (gameOver) return;
+  if (keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+  if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+  player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+
+  if (--spawnTimer <= 0) { spawn(); spawnTimer = 40; }
+
+  for (const it of items) {
+    it.y += it.vy;
+    const hit = it.y + it.r >= player.y && it.y - it.r <= player.y + player.h &&
+                it.x >= player.x && it.x <= player.x + player.w;
+    if (hit) {
+      it.dead = true;
+      if (it.rock) lives--; else score += 10;
+    } else if (it.y > canvas.height + 20) {
+      it.dead = true;
+      if (!it.rock) lives--;
+    }
+  }
+  items = items.filter(i => !i.dead);
+  if (lives <= 0) gameOver = true;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  for (const it of items) {
+    ctx.beginPath();
+    ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2);
+    ctx.fillStyle = it.rock ? "#6b7280" : "#fca311";
+    ctx.shadowColor = it.rock ? "transparent" : "#fca311";
+    ctx.shadowBlur = it.rock ? 0 : 16;
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = "#fdf0d5";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  ctx.font = "20px Georgia";
+  ctx.textAlign = "left";
+  ctx.fillText("Score: " + score, 12, 28);
+  ctx.textAlign = "right";
+  ctx.fillText("Lives: " + lives, canvas.width - 12, 28);
+
+  if (gameOver) {
+    ctx.textAlign = "center";
+    ctx.font = "36px Georgia";
+    ctx.fillText("Game over", canvas.width / 2, 300);
+    ctx.font = "18px Georgia";
+    ctx.fillText("Final score " + score + ". Press Space to play again.", canvas.width / 2, 336);
+  }
+}
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+window.addEventListener("keydown", e => {
+  keys[e.key] = true;
+  if (e.key === " " && gameOver) reset();
+});
+window.addEventListener("keyup", e => keys[e.key] = false);
+
+reset();
+loop();
+</script>
+</body>
+</html>
+
+
+
